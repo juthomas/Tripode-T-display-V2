@@ -45,20 +45,10 @@ typedef	struct 	s_data_task
 	TaskHandle_t thisTaskHandler;
 }				t_data_task;
 
-bool isTaskActives[3] = {false, false, false};
 
-void task1( void * parameter);
-void task2( void * parameter);
-void task3( void * parameter);
+// typedef void(*t_task_func)(void *param);
 
-typedef void(*t_task_func)(void *param);
 
-#define TASK_NUMBER 3
-static const t_task_func	g_task_func[TASK_NUMBER] = {
-	(t_task_func)task1,
-	(t_task_func)task2,
-	(t_task_func)task3,
-};
 
 t_data_task g_data_task[3];
 
@@ -81,6 +71,41 @@ unsigned int localUdpPort = 49141;
 char incomingPacket[255];
 String convertedPacket;
 char  replyPacket[] = "Message received";
+
+
+void set_pwm0(int pwm);
+void set_pwm1(int pwm);
+void set_pwm2(int pwm);
+
+typedef void(*t_set_pwm)(int pwm);
+
+#define TASK_NUMBER 3
+static const t_set_pwm	g_set_pwm[TASK_NUMBER] = {
+	(t_set_pwm)set_pwm0,
+	(t_set_pwm)set_pwm1,
+	(t_set_pwm)set_pwm2,
+};
+
+void stop_pwm0(void);
+void stop_pwm1(void);
+void stop_pwm2(void);
+
+typedef void(*t_stop_pwm)(void);
+
+#define TASK_NUMBER 3
+static const t_stop_pwm	g_stop_pwm[TASK_NUMBER] = {
+	(t_stop_pwm)stop_pwm0,
+	(t_stop_pwm)stop_pwm1,
+	(t_stop_pwm)stop_pwm2,
+};
+
+
+
+bool	timersActives[3];
+int		pwmValues[3];
+int		timerPansements[3];
+hw_timer_t * timers[3];
+
 
 
 const char* wl_status_to_string(int ah) {
@@ -130,7 +155,17 @@ void setup() {
 	// put your setup code here, to run once:
 	Serial.begin(115200);
 	WiFi.begin(ssid, password);
+	timersActives[0] = false;
+	timersActives[1] = false;
+	timersActives[2] = false;
 
+	pwmValues[0] = 0;
+	pwmValues[1] = 0;
+	pwmValues[2] = 0;
+
+	timers[0] = timerBegin(0, 80, true);
+	timers[1] = timerBegin(1, 80, true);
+	timers[2] = timerBegin(2, 80, true);
 
 	ledcSetup(motorChannel1, motorFreq, motorResolution);
 	ledcSetup(motorChannel2, motorFreq, motorResolution);
@@ -209,29 +244,74 @@ void drawMotorsActivity()
 	tft.drawLine(100, 215, 67, 195, color2);
 	tft.drawLine(67, 195, 35, 215, color2);
 
-
-	for (int i = 0; i < TASK_NUMBER; i++)
-	{
-		if (	isTaskActives[i] == true)
-		{
 			//tft.drawCircle(TFT_WIDTH / 2, TFT_HEIGHT/4 * i + TFT_HEIGHT/4 , 20, TFT_BLUE);
-			if (i == 0)
+			if (timerAlarmEnabled(timers[0]))
 			{
-				tft.fillCircle(67, 120 ,  g_data_task[i].pwm / 11, TFT_BLUE);
+				tft.fillCircle(67, 120 ,  pwmValues[0] / 11, TFT_BLUE);
+				// Serial.printf("Seconds lefts : %lf\n", timerAlarmReadSeconds(timers[0]));
 			}
-			else if (i == 1)
+			if (timerAlarmEnabled(timers[1]))
 			{
-				tft.fillCircle(27, 190 ,  g_data_task[i].pwm / 11, TFT_BLUE);
+				tft.fillCircle(27, 190 ,  pwmValues[1] / 11, TFT_BLUE);
 			}
-			else if (i == 2)
+			if (timerAlarmEnabled(timers[2]))
 			{
-				tft.fillCircle(108, 190 ,  g_data_task[i].pwm / 11, TFT_BLUE);
+				tft.fillCircle(108, 190 ,  pwmValues[2] / 11, TFT_BLUE);
 			}
-
-			
-		}
-	}
+	
 }
+
+
+void	set_pwm0(int pwm)
+{
+	ledcWrite(0, pwm);
+}
+
+void	set_pwm1(int pwm)
+{
+	ledcWrite(1, pwm);
+}
+
+void	set_pwm2(int pwm)
+{
+	ledcWrite(2, pwm);
+}
+
+void	stop_pwm0(void)
+{
+	if (timerPansements[0] <= 0)
+	{
+		Serial.printf("End of timer 0\n");
+		ledcWrite(0, 0);
+		timerAlarmDisable(timers[0]);	}
+	timerPansements[0]--;
+	// timerAlarmDisable(timers[0]);
+}
+
+void	stop_pwm1(void)
+{
+	// ledcWrite(1, 0);
+	if (timerPansements[1] <= 0)
+	{
+		Serial.printf("End of timer 1\n");
+		ledcWrite(1, 0);
+		timerAlarmDisable(timers[1]);
+	}
+	timerPansements[1]--;
+}
+
+void	stop_pwm2(void)
+{
+	ledcWrite(2, 0);
+	if (timerPansements[2] <= 0)
+	{
+		Serial.printf("End of timer 2\n");
+		ledcWrite(2, 0);
+		timerAlarmDisable(timers[2]);	
+	}
+	timerPansements[2]--;
+}
+
 
 void loop() {
 	int packetSize = Udp.parsePacket();
@@ -246,7 +326,63 @@ void loop() {
 		convertedPacket = String(incomingPacket);
 		Serial.println(convertedPacket);
 		Serial.printf("Debug indexof = P:%d, D:%d, I:%d\n",convertedPacket.indexOf('P'), convertedPacket.indexOf('D'), convertedPacket.indexOf("I"));
+		
+		if (convertedPacket.indexOf("P") > -1 && convertedPacket.indexOf("D") > -1 && convertedPacket.indexOf("I") > -1 )
+		{
+			//t_data_task dataTask;
 
+			int duration = convertedPacket.substring(convertedPacket.indexOf("D") + 1).toInt();
+			int intensity = convertedPacket.substring(convertedPacket.indexOf("I") + 1).toInt();
+			int pin = convertedPacket.substring(convertedPacket.indexOf("P") + 1).toInt();
+			if (pin == 0)
+			{
+				//Stop Previous timer
+				if (timerAlarmEnabled(timers[0]))
+				{
+					timerAlarmDisable(timers[0]);
+				}
+				pwmValues[0] = intensity;
+				g_set_pwm[0](intensity);
+				
+				timerAttachInterrupt(timers[0], &stop_pwm0, false);
+				timerPansements[0] = 1;
+				timerAlarmWrite(timers[0], duration * 1000, true);
+				timerAlarmEnable(timers[0]);
+				
+			}
+			else if (pin == 1)
+			{
+				//Stop Previous timer
+				if (timerAlarmEnabled(timers[1]))
+				{
+					timerAlarmDisable(timers[1]);
+				}
+				pwmValues[1] = intensity;
+				g_set_pwm[1](intensity);
+				
+				timerAttachInterrupt(timers[1], &stop_pwm1, false);
+				timerPansements[1] = 1;
+				timerAlarmWrite(timers[1], duration * 1000, true);
+				timerAlarmEnable(timers[1]);
+			}
+			else if (pin == 2)
+			{
+				//Stop Previous timer
+				if (timerAlarmEnabled(timers[2]))
+				{
+					timerAlarmDisable(timers[2]);
+				}
+				pwmValues[2] = intensity;
+				g_set_pwm[2](intensity);
+				
+				timerAttachInterrupt(timers[2], &stop_pwm2, false);
+				timerPansements[2] = 1;
+				timerAlarmWrite(timers[2], duration * 1000, true);
+				timerAlarmEnable(timers[2]);
+			}
+
+
+		}
 		
 		
 	}
