@@ -224,40 +224,50 @@ void setup() {
 
 void drawMotorsActivity()
 {
-	tft.fillScreen(TFT_BLACK);
-	tft.setCursor(0, 0);
-	tft.printf("Ssid : %s\n\nIp : %s\n\nUdp port : %d\n\n", ssid,WiFi.localIP().toString().c_str(), localUdpPort);
+	TFT_eSprite drawing_sprite = TFT_eSprite(&tft);
+
+  drawing_sprite.setColorDepth(8);
+  drawing_sprite.createSprite(tft.width(), tft.height());
+	drawing_sprite.fillSprite(TFT_BLACK);
+	    drawing_sprite.setTextSize(1);
+		drawing_sprite.setTextFont(1);
+    drawing_sprite.setTextColor(TFT_GREEN);
+    drawing_sprite.setTextDatum(MC_DATUM);
+	drawing_sprite.setCursor(0, 0);
+	drawing_sprite.printf("Ssid : %s\n\nIp : %s\n\nUdp port : %d\n\n", ssid,WiFi.localIP().toString().c_str(), localUdpPort);
 	uint16_t v = analogRead(ADC_PIN);
 	float battery_voltage = ((float)v / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
-	tft.printf("Voltage : %.2fv\n", battery_voltage);
+	drawing_sprite.printf("Voltage : %.2fv\n", battery_voltage);
 
 	
 	//uint32_t color1 = TFT_BLUE;
 	uint32_t color2 = TFT_WHITE;
-	tft.drawCircle(67, 120 , 26, color2);
-	tft.drawCircle(27, 190 , 26, color2);
-	tft.drawCircle(108, 190 , 26, color2);
-	tft.drawLine(15, 167, 40, 150, color2);
-	tft.drawLine(40, 150, 40, 120, color2);
-	tft.drawLine(93, 120, 93, 150, color2);
-	tft.drawLine(93, 150, 120, 167, color2);
-	tft.drawLine(100, 215, 67, 195, color2);
-	tft.drawLine(67, 195, 35, 215, color2);
+	drawing_sprite.drawCircle(67, 120 , 26, color2);
+	drawing_sprite.drawCircle(27, 190 , 26, color2);
+	drawing_sprite.drawCircle(108, 190 , 26, color2);
+	drawing_sprite.drawLine(15, 167, 40, 150, color2);
+	drawing_sprite.drawLine(40, 150, 40, 120, color2);
+	drawing_sprite.drawLine(93, 120, 93, 150, color2);
+	drawing_sprite.drawLine(93, 150, 120, 167, color2);
+	drawing_sprite.drawLine(100, 215, 67, 195, color2);
+	drawing_sprite.drawLine(67, 195, 35, 215, color2);
 
-			//tft.drawCircle(TFT_WIDTH / 2, TFT_HEIGHT/4 * i + TFT_HEIGHT/4 , 20, TFT_BLUE);
-			if (timerAlarmEnabled(timers[0]))
-			{
-				tft.fillCircle(67, 120 ,  pwmValues[0] / 11, TFT_BLUE);
-				// Serial.printf("Seconds lefts : %lf\n", timerAlarmReadSeconds(timers[0]));
-			}
-			if (timerAlarmEnabled(timers[1]))
-			{
-				tft.fillCircle(27, 190 ,  pwmValues[1] / 11, TFT_BLUE);
-			}
-			if (timerAlarmEnabled(timers[2]))
-			{
-				tft.fillCircle(108, 190 ,  pwmValues[2] / 11, TFT_BLUE);
-			}
+			//drawing_sprite.drawCircle(TFT_WIDTH / 2, TFT_HEIGHT/4 * i + TFT_HEIGHT/4 , 20, TFT_BLUE);
+	if (timerAlarmEnabled(timers[0]))
+	{
+		drawing_sprite.fillCircle(67, 120 ,  pwmValues[0] / 11, TFT_BLUE);
+		// Serial.printf("Seconds lefts : %lf\n", timerAlarmReadSeconds(timers[0]));
+	}
+	if (timerAlarmEnabled(timers[1]))
+	{
+		drawing_sprite.fillCircle(27, 190 ,  pwmValues[1] / 11, TFT_BLUE);
+	}
+	if (timerAlarmEnabled(timers[2]))
+	{
+		drawing_sprite.fillCircle(108, 190 ,  pwmValues[2] / 11, TFT_BLUE);
+	}
+	drawing_sprite.pushSprite(0, 0);
+	drawing_sprite.deleteSprite();
 	
 }
 
